@@ -395,13 +395,25 @@ async function generateAllThumbnails() {
     showToast('✓ Todas las miniaturas generadas con éxito');
 }
 
+// Función hash segura para generar IDs sin fallar con caracteres Unicode/acentos
+function safeKey(str) {
+    if (!str) return 'k0';
+    let hash = 5381;
+    for (let i = 0; i < str.length; i++) {
+        hash = ((hash << 5) + hash) + str.charCodeAt(i);
+        hash |= 0;
+    }
+    return 'k' + Math.abs(hash);
+}
+
 // Renderizado de la lista lateral de archivos
 function renderFileList(files) {
     fileList = files;
     const container = document.getElementById('file-list');
     container.innerHTML = '';
 
-    document.getElementById('file-count-badge').textContent = `${files.length} STL`;
+    const badge = document.getElementById('file-count-badge');
+    if (badge) badge.textContent = `${files.length} STL`;
 
     if (files.length === 0) {
         container.innerHTML = `<div style="text-align: center; color: var(--text-muted); padding: 2rem 1rem; font-size: 0.85rem;">No se encontraron archivos .stl en esta carpeta</div>`;
@@ -409,28 +421,33 @@ function renderFileList(files) {
     }
 
     files.forEach(f => {
-        const card = document.createElement('div');
-        card.className = 'file-card';
-        card.id = `card-${btoa(f.path).replace(/=/g, '')}`;
-        card.onclick = () => loadStlFromPath(f.path, f.name);
+        try {
+            const cardKey = safeKey(f.path);
+            const card = document.createElement('div');
+            card.className = 'file-card';
+            card.id = `card-${cardKey}`;
+            card.onclick = () => loadStlFromPath(f.path, f.name);
 
-        card.innerHTML = `
-            <div class="file-thumb" id="thumb-${btoa(f.path).replace(/=/g, '')}">
-                <span class="thumb-placeholder">🧊</span>
-            </div>
-            <div class="file-info">
-                <div class="file-name" title="${f.name}">${f.name}</div>
-                <div class="file-meta">
-                    <span>${f.size_formatted}</span>
+            card.innerHTML = `
+                <div class="file-thumb" id="thumb-${cardKey}">
+                    <span class="thumb-placeholder">🧊</span>
                 </div>
-            </div>
-        `;
-        container.appendChild(card);
+                <div class="file-info">
+                    <div class="file-name" title="${f.name}">${f.name}</div>
+                    <div class="file-meta">
+                        <span>${f.size_formatted}</span>
+                    </div>
+                </div>
+            `;
+            container.appendChild(card);
+        } catch (err) {
+            console.error('Error renderizando tarjeta para:', f.name, err);
+        }
     });
 }
 
 function updateCardThumb(filePath, dataUrl) {
-    const el = document.getElementById(`thumb-${btoa(filePath).replace(/=/g, '')}`);
+    const el = document.getElementById(`thumb-${safeKey(filePath)}`);
     if (el) {
         el.innerHTML = `<img src="${dataUrl}" alt="thumb">`;
     }
@@ -438,7 +455,7 @@ function updateCardThumb(filePath, dataUrl) {
 
 function highlightActiveCard(filePath) {
     document.querySelectorAll('.file-card').forEach(c => c.classList.remove('active'));
-    const active = document.getElementById(`card-${btoa(filePath).replace(/=/g, '')}`);
+    const active = document.getElementById(`card-${safeKey(filePath)}`);
     if (active) {
         active.classList.add('active');
         active.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
