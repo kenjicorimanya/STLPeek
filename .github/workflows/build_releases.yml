@@ -1,0 +1,112 @@
+name: Build Multi-Platform Releases
+
+on:
+  push:
+    tags:
+      - 'v*'
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            artifact_name: STLPeek-Windows
+            asset_name: STLPeek-Windows.zip
+          - os: ubuntu-latest
+            artifact_name: STLPeek-Linux
+            asset_name: STLPeek-Linux.tar.gz
+          - os: macos-latest
+            artifact_name: STLPeek-macOS
+            asset_name: STLPeek-macOS.zip
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Linux System Dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev python3-gi python3-gi-cairo gir1.2-gtk-3.0 gir1.2-webkit2-4.1
+
+      - name: Install Python Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Build with PyInstaller (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          pyinstaller --noconfirm --onedir --windowed --name "STLPeek" `
+            --add-data "stlpeek/libs;stlpeek/libs" `
+            --add-data "stlpeek/ui;stlpeek/ui" `
+            main.py
+          Compress-Archive -Path dist/STLPeek -DestinationPath STLPeek-Windows.zip
+
+      - name: Build with PyInstaller (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          pyinstaller --noconfirm --onedir --windowed --name "STLPeek" \
+            --add-data "stlpeek/libs:stlpeek/libs" \
+            --add-data "stlpeek/ui:stlpeek/ui" \
+            main.py
+          tar -czvf STLPeek-Linux.tar.gz -C dist STLPeek
+
+      - name: Build with PyInstaller (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          pyinstaller --noconfirm --onedir --windowed --name "STLPeek" \
+            --add-data "stlpeek/libs:stlpeek/libs" \
+            --add-data "stlpeek/ui:stlpeek/ui" \
+            main.py
+          zip -r STLPeek-macOS.zip dist/STLPeek.app
+
+      - name: Upload Build Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: ${{ matrix.asset_name }}
+
+  release:
+    name: Create GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release_assets
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: STLPeek v1.0.0
+          tag_name: ${{ github.ref_name || 'v1.0.0' }}
+          draft: false
+          prerelease: false
+          files: |
+            release_assets/STLPeek-Windows/STLPeek-Windows.zip
+            release_assets/STLPeek-Linux/STLPeek-Linux.tar.gz
+            release_assets/STLPeek-macOS/STLPeek-macOS.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

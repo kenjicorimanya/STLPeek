@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>STL Thumb & 3D Viewer</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Librerías locales Three.js (100% Offline) -->
+    <script src="../libs/three.min.js"></script>
+    <script src="../libs/OrbitControls.js"></script>
+    <script src="../libs/STLLoader.js"></script>
+</head>
+<body>
+    <div id="app-container">
+        <!-- Barra Lateral de Archivos y Miniaturas -->
+        <aside id="sidebar">
+            <div class="sidebar-header">
+                <div class="app-title">
+                    <span class="icon-cube">🧊</span>
+                    <span>STL Thumb & Viewer</span>
+                    <span class="badge">PRO</span>
+                </div>
+
+                <div class="action-buttons">
+                    <button id="btn-open-folder" class="btn btn-primary" title="Abrir una carpeta con modelos STL">
+                        📁 Abrir Carpeta
+                    </button>
+                    <button id="btn-open-file" class="btn btn-secondary" title="Abrir un archivo STL individual">
+                        📄 Abrir
+                    </button>
+                </div>
+
+                <div class="search-box">
+                    <span class="icon">🔍</span>
+                    <input type="text" id="search-input" placeholder="Buscar modelo...">
+                </div>
+
+                <div class="batch-actions">
+                    <span id="file-count-badge">0 STL</span>
+                    <button id="btn-batch-thumbs" class="btn btn-secondary btn-small" title="Genera archivos PNG de miniatura para cada STL en la carpeta">
+                        ⚡ Generar todas las miniaturas
+                    </button>
+                </div>
+            </div>
+
+            <!-- Lista de Archivos y Miniaturas -->
+            <div id="file-list" class="file-list">
+                <div style="text-align: center; color: var(--text-muted); padding: 3rem 1.5rem; font-size: 0.85rem; line-height: 1.5;">
+                    Haz clic en <strong>"Abrir Carpeta"</strong> para ver tus archivos STL o arrastra un modelo a la ventana.
+                </div>
+            </div>
+        </aside>
+
+        <!-- Viewport 3D Principal -->
+        <main id="viewport-container">
+            <canvas id="webgl-canvas"></canvas>
+
+            <!-- Barra de Herramientas Flotante -->
+            <div id="floating-toolbar" class="floating-toolbar" style="display: none;">
+                <!-- Vistas de cámara rápidas -->
+                <div class="tool-group">
+                    <button id="btn-view-iso" class="tool-btn active" title="Vista Isométrica">📐</button>
+                    <button id="btn-view-top" class="tool-btn" title="Vista Superior">⬇️</button>
+                    <button id="btn-view-front" class="tool-btn" title="Vista Frontal">👁️</button>
+                    <button id="btn-view-side" class="tool-btn" title="Vista Lateral">➡️</button>
+                </div>
+
+                <div class="tool-separator"></div>
+
+                <!-- Paleta de Colores de Filamento -->
+                <div class="tool-group">
+                    <div class="color-swatch active" data-color="#38bdf8" style="background: #38bdf8;" title="Azul Glaciar"></div>
+                    <div class="color-swatch" data-color="#f97316" style="background: #f97316;" title="Naranja Prusa"></div>
+                    <div class="color-swatch" data-color="#eab308" style="background: #eab308;" title="Oro Seda"></div>
+                    <div class="color-swatch" data-color="#f8fafc" style="background: #f8fafc;" title="Blanco Marfil"></div>
+                    <div class="color-swatch" data-color="#64748b" style="background: #64748b;" title="Gris Técnico"></div>
+                    <div class="color-swatch" data-color="#18181b" style="background: #27272a;" title="Negro Mate"></div>
+                </div>
+
+                <div class="tool-separator"></div>
+
+                <!-- Modos de visualización -->
+                <div class="tool-group">
+                    <button id="btn-wireframe" class="tool-btn" title="Modo Alambre (Malla)">🕸️</button>
+                    <button id="btn-grid" class="tool-btn active" title="Cama de impresión / Rejilla">📏</button>
+                    <button id="btn-auto-rotate" class="tool-btn" title="Rotación continua (Presentación)">🔄</button>
+                </div>
+
+                <div class="tool-separator"></div>
+
+                <!-- Captura de imagen / Guardar miniatura -->
+                <div class="tool-group">
+                    <button id="btn-capture-thumb" class="btn btn-secondary btn-small" title="Guarda una miniatura PNG de este modelo">
+                        📸 Guardar miniatura
+                    </button>
+                    <button id="btn-export-hd" class="btn btn-primary btn-small" title="Exportar imagen en alta resolución">
+                        💾 Captura HD
+                    </button>
+                </div>
+            </div>
+
+            <!-- HUD de Métricas del Modelo -->
+            <div id="hud-card" class="hud-card" style="display: none;">
+                <div class="hud-title">
+                    <span id="hud-filename">Modelo STL</span>
+                </div>
+                <div class="hud-row">
+                    <span>Dimensiones (X × Y × Z):</span>
+                    <span class="val" id="hud-dims">0 × 0 × 0 mm</span>
+                </div>
+                <div class="hud-row">
+                    <span>Triángulos / Polígonos:</span>
+                    <span class="val" id="hud-triangles">0</span>
+                </div>
+                <div class="hud-row">
+                    <span>Volumen estimado:</span>
+                    <span class="val" id="hud-volume">0 cm³</span>
+                </div>
+                <div class="hud-row">
+                    <span>Peso estimado (PLA):</span>
+                    <span class="val" id="hud-weight">~0 g</span>
+                </div>
+            </div>
+
+            <!-- Pantalla vacía inicial -->
+            <div id="empty-state" style="position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none;">
+                <div style="font-size: 4rem; margin-bottom: 1rem; opacity: 0.8;">🧊</div>
+                <h2 style="font-size: 1.5rem; font-weight: 600; color: #f8fafc; margin-bottom: 0.5rem;">Visor 3D de Archivos STL</h2>
+                <p style="color: #94a3b8; font-size: 0.95rem; max-width: 400px; text-align: center;">
+                    Selecciona una carpeta en el panel izquierdo o arrastra y suelta un archivo .stl aquí para inspeccionarlo en 3D.
+                </p>
+            </div>
+
+            <!-- Overlay Drag and Drop -->
+            <div id="dropzone-overlay" class="dropzone-overlay">
+                <div class="dropzone-box">
+                    <div class="dropzone-icon">📥</div>
+                    <h3>Suelta tu archivo .STL aquí</h3>
+                    <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.4rem;">Se cargará al instante en el visor 3D</p>
+                </div>
+            </div>
+
+            <!-- Spinner de Carga -->
+            <div id="loader-overlay" class="loader-overlay">
+                <div class="spinner"></div>
+                <p style="color: #f8fafc; font-size: 0.9rem; font-weight: 500;">Procesando geometría 3D...</p>
+            </div>
+
+            <!-- Notificaciones Toast -->
+            <div id="toast-container" class="toast-container"></div>
+        </main>
+    </div>
+
+    <!-- Script principal de la aplicación -->
+    <script src="viewer.js"></script>
+</body>
+</html>
