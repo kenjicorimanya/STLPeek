@@ -193,13 +193,29 @@ class StlApi:
         return f"{bytes_size:.1f} TB"
 
 
+def get_base_dir():
+    if getattr(sys, 'frozen', False):
+        if hasattr(sys, '_MEIPASS'):
+            candidate = Path(sys._MEIPASS) / "stlpeek"
+            if (candidate / "ui" / "index.html").exists():
+                return candidate
+        exe_dir = Path(sys.executable).parent
+        candidate = exe_dir / "_internal" / "stlpeek"
+        if (candidate / "ui" / "index.html").exists():
+            return candidate
+        candidate = exe_dir / "stlpeek"
+        if (candidate / "ui" / "index.html").exists():
+            return candidate
+    return Path(__file__).parent.resolve()
+
+
 def start_app(target=None):
     api = StlApi(initial_target=target)
-    base_dir = Path(__file__).parent.resolve()
+    base_dir = get_base_dir()
     ui_html = base_dir / "ui" / "index.html"
 
     window = webview.create_window(
-        title="STL Thumb & 3D Viewer",
+        title="STLPeek - 3D Viewer",
         url=str(ui_html),
         js_api=api,
         width=1240,
@@ -214,3 +230,4 @@ def start_app(target=None):
 if __name__ == '__main__':
     arg_target = sys.argv[1] if len(sys.argv) > 1 else None
     start_app(arg_target)
+
