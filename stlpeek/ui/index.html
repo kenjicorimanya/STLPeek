@@ -3,12 +3,27 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>STL Thumb & 3D Viewer</title>
+    <title>STLPeek - 3D Viewer</title>
     <link rel="stylesheet" href="style.css">
-    <!-- Librerías locales Three.js (100% Offline) -->
-    <script src="../libs/three.min.js"></script>
-    <script src="../libs/OrbitControls.js"></script>
-    <script src="../libs/STLLoader.js"></script>
+    <!-- Librerías locales Three.js (Offline) con respaldo automático -->
+    <script src="libs/three.min.js"></script>
+    <script>
+        if (typeof THREE === 'undefined') {
+            document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"><\\/script>');
+        }
+    </script>
+    <script src="libs/OrbitControls.js"></script>
+    <script>
+        if (typeof THREE !== 'undefined' && typeof THREE.OrbitControls === 'undefined') {
+            document.write('<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"><\\/script>');
+        }
+    </script>
+    <script src="libs/STLLoader.js"></script>
+    <script>
+        if (typeof THREE !== 'undefined' && typeof THREE.STLLoader === 'undefined') {
+            document.write('<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/STLLoader.js"><\\/script>');
+        }
+    </script>
 </head>
 <body>
     <div id="app-container">
@@ -17,7 +32,7 @@
             <div class="sidebar-header">
                 <div class="app-title">
                     <span class="icon-cube">🧊</span>
-                    <span>STL Thumb & Viewer</span>
+                    <span>STLPeek</span>
                     <span class="badge">PRO</span>
                 </div>
 

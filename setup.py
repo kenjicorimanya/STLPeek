@@ -11,7 +11,7 @@ setup(
     packages=find_packages(),
     include_package_data=True,
     package_data={
-        "stlpeek": ["libs/*", "ui/*"],
+        "stlpeek": ["libs/*", "ui/*", "ui/libs/*"],
     },
     install_requires=[
         "pywebview>=5.0.0",
