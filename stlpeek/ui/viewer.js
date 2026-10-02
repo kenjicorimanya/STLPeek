@@ -59,6 +59,8 @@ function setupLighting() {
     const keyLight = new THREE.DirectionalLight(0xffffff, 0.85);
     keyLight.position.set(200, -250, 300);
     keyLight.castShadow = true;
+    keyLight.shadow.bias = -0.0005;
+    keyLight.shadow.normalBias = 0.05;
     keyLight.shadow.mapSize.width = 1024;
     keyLight.shadow.mapSize.height = 1024;
     scene.add(keyLight);
@@ -139,7 +141,8 @@ function loadStlGeometry(arrayBuffer, filename, filepath) {
                 metalness: 0.15,
                 roughness: 0.45,
                 clearcoat: 0.25,
-                wireframe: isWireframe
+                wireframe: isWireframe,
+                side: THREE.DoubleSide
             });
 
             currentMesh = new THREE.Mesh(geometry, material);
