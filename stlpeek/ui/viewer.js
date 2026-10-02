@@ -571,26 +571,58 @@ window.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Cargar datos iniciales si se pasaron por CLI
-    window.addEventListener('pywebviewready', async () => {
-        if (!window.pywebview) return;
+    // Iniciar chequeo de datos iniciales tras DOM ready
+    checkAndLoadInitialData();
+});
+
+// Lógica de arranque robusta para pywebview
+let initialDataLoaded = false;
+
+async function checkAndLoadInitialData() {
+    if (initialDataLoaded) return;
+    if (!window.pywebview || !window.pywebview.api) {
+        return;
+    }
+    initialDataLoaded = true;
+    try {
+        console.log('Consultando archivo o carpeta inicial...');
         const initial = await window.pywebview.api.get_initial_data();
+        console.log('Datos iniciales recibidos:', initial);
         if (initial) {
             if (initial.type === 'file') {
                 const folderRes = await window.pywebview.api.scan_folder(initial.folder_path);
                 if (folderRes && folderRes.files) {
                     renderFileList(folderRes.files);
                 }
-                loadStlFromPath(initial.file_path, initial.file_path.split(/[\\/]/).pop());
+                const filename = initial.file_path.replace(/\\/g, '/').split('/').pop();
+                await loadStlFromPath(initial.file_path, filename);
             } else if (initial.type === 'folder') {
                 const folderRes = await window.pywebview.api.scan_folder(initial.folder_path);
                 if (folderRes && folderRes.files) {
                     renderFileList(folderRes.files);
                     if (folderRes.files.length > 0) {
-                        loadStlFromPath(folderRes.files[0].path, folderRes.files[0].name);
+                        await loadStlFromPath(folderRes.files[0].path, folderRes.files[0].name);
                     }
                 }
             }
         }
-    });
-});
+    } catch (e) {
+        console.error('Error al procesar datos iniciales:', e);
+    }
+}
+
+// 1. Escuchar pywebviewready si aún no ha ocurrido
+window.addEventListener('pywebviewready', checkAndLoadInitialData);
+
+// 2. Comprobar periódicamente cada 50ms por si pywebview ya estaba inyectado antes
+let pollCount = 0;
+const pollTimer = setInterval(() => {
+    pollCount++;
+    if (initialDataLoaded || pollCount > 100) {
+        clearInterval(pollTimer);
+    } else if (window.pywebview && window.pywebview.api) {
+        checkAndLoadInitialData();
+        clearInterval(pollTimer);
+    }
+}, 50);
+

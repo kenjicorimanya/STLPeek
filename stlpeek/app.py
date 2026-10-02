@@ -28,18 +28,20 @@ class StlApi:
         """Devuelve el archivo o carpeta inicial si se pasó por línea de comandos."""
         if not self.initial_target:
             return None
-        target = Path(self.initial_target).resolve()
-        if target.is_file() and target.suffix.lower() == '.stl':
-            return {
-                'type': 'file',
-                'file_path': str(target),
-                'folder_path': str(target.parent)
-            }
-        elif target.is_dir():
-            return {
-                'type': 'folder',
-                'folder_path': str(target)
-            }
+        clean_target = str(self.initial_target).strip('\"\'')
+        target = Path(clean_target).resolve()
+        if target.exists():
+            if target.is_file() and target.suffix.lower() == '.stl':
+                return {
+                    'type': 'file',
+                    'file_path': str(target),
+                    'folder_path': str(target.parent)
+                }
+            elif target.is_dir():
+                return {
+                    'type': 'folder',
+                    'folder_path': str(target)
+                }
         return None
 
     def select_folder(self):
